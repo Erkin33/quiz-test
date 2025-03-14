@@ -4,15 +4,18 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 export default function MyStyledQuiz() {
-  // Массив шагов квиза
+  // Массив шагов квиза с подсказками для каждого шага
   const steps = [
     {
       id: 1,
       type: 'date',
       question: 'Когда планируете поездку?',
       key: 'travelDate',
+      hint: 'Выберите примерно в диапазоне дат',
     },
     {
       id: 2,
@@ -20,6 +23,7 @@ export default function MyStyledQuiz() {
       question: 'Сколько ночей планируете отдыхать?',
       key: 'nights',
       options: ['до 5 ночей', '6-9 ночей', '9-13 ночей', '14+ ночей', 'Другое…'],
+      hint: 'Выберите ваш ответ',
     },
     {
       id: 3,
@@ -27,6 +31,7 @@ export default function MyStyledQuiz() {
       question: 'Сколько взрослых едет?',
       key: 'adults',
       options: ['1', '2', '3', '4+', 'Другое…'],
+      hint: 'Укажите число взрослых',
     },
     {
       id: 4,
@@ -34,11 +39,13 @@ export default function MyStyledQuiz() {
       question: 'Сколько детей едет?',
       key: 'children',
       options: ['0', '1', '2', '3+', 'Другое…'],
+      hint: 'Укажите число детей, если есть',
     },
     {
       id: 5,
       type: 'contact',
       question: 'Заполните форму и получите подборку лучших туров',
+      hint: 'Укажите телефон и имя, чтобы мы могли связаться с вами',
     },
     {
       id: 6,
@@ -47,9 +54,9 @@ export default function MyStyledQuiz() {
     },
   ];
 
-  // Данные формы
+  // Состояние формы
   const [formData, setFormData] = useState({
-    travelDate: '',
+    travelDate: null,
     nights: '',
     nightsOther: '',
     adults: '',
@@ -58,21 +65,15 @@ export default function MyStyledQuiz() {
     childrenOther: '',
     phone: '',
     name: '',
-    agreement: false,
+    agreement: true, // галочка по умолчанию
   });
 
   const [currentStep, setCurrentStep] = useState(0);
-
-  // Вычисляем прогресс (0..100)
   const progress = Math.round((currentStep / (steps.length - 1)) * 100);
+  const current = steps[currentStep];
 
-  // Функция перехода на следующий шаг (с валидацией для не-радио вопросов)
+  // Переход на следующий шаг (проверка для шага contact)
   const goNext = () => {
-    const current = steps[currentStep];
-    if (current.type === 'date' && !formData.travelDate) {
-      alert('Пожалуйста, выберите дату');
-      return;
-    }
     if (current.type === 'contact') {
       if (!formData.phone) {
         alert('Пожалуйста, введите номер телефона');
@@ -88,91 +89,91 @@ export default function MyStyledQuiz() {
       }
     }
     if (currentStep < steps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
+      setCurrentStep(prev => prev + 1);
     }
   };
 
   // Переход назад
   const goBack = () => {
     if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
+      setCurrentStep(prev => prev - 1);
     }
   };
 
-  // Обработка выбора радио-ответа – сразу переходим на следующий шаг
+  // Обработка выбора радио-вопроса
   const handleRadioSelect = (stepKey, option) => {
-    if (option === 'Другое…') {
-      setFormData((prev) => ({ ...prev, [stepKey]: 'other' }));
-    } else {
-      setFormData((prev) => ({ ...prev, [stepKey]: option }));
-    }
-    // Переход сразу, без вызова goNext (чтобы избежать проблемы с асинхронностью state)
-    setCurrentStep((prev) => prev + 1);
+    setFormData(prev => ({
+      ...prev,
+      [stepKey]: option === 'Другое…' ? 'other' : option,
+    }));
+    setCurrentStep(prev => prev + 1);
   };
 
-  // Обработчик для инпутов (дата, текст)
+  // Обработка изменений текстовых полей
   const handleChange = (key, value) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+    setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  // Финальная отправка (здесь можно добавить отправку в CRM)
+  // Обработка выбора даты: сохраняем дату и переходим дальше
+  const handleDateSelect = (date) => {
+    setFormData(prev => ({ ...prev, travelDate: date }));
+    setCurrentStep(prev => prev + 1);
+  };
+
+  // Финальная отправка
   const handleSubmit = () => {
     alert('Данные отправлены:\n' + JSON.stringify(formData, null, 2));
-    setCurrentStep((prev) => prev + 1);
+    setCurrentStep(prev => prev + 1);
   };
 
-  const current = steps[currentStep];
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      {/* Увеличенный и центрированный контейнер квиза */}
-      <div className="w-full max-w-3xl h-[80vh] bg-white rounded-lg shadow-lg p-8 relative flex flex-col justify-center">
-        {/* Прогресс-бар "змейка" */}
-        <div className="absolute bottom-0 left-0 w-full h-4 bg-gray-200 rounded-b overflow-hidden">
-          <div className="h-4 snake-progress" style={{ width: `${progress}%` }}></div>
-        </div>
-        {/* Процент в правом верхнем углу */}
-        <div className="absolute top-4 right-4 text-gray-600 text-sm">
-          {progress}%
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 overflow-hidden">
+      {/* Контейнер квиза адаптивный: для мобильных max-w-lg, для md и выше – max-w-3xl; высота авто для мобильных, фиксированная для десктопа */}
+      <div className="w-full max-w-lg md:max-w-3xl h-auto md:h-[80vh] bg-white rounded-lg shadow-lg p-4 md:p-8 relative flex flex-col justify-center overflow-hidden">
+        {/* Прогресс-бар с процентами рядом */}
+        <div className="absolute bottom-0 left-0 w-full flex items-center p-2">
+          <div className="flex-grow progress-bar">
+            <div className="progress-bar-fill" style={{ width: `${progress}%` }}></div>
+          </div>
+          <span className="ml-2 text-xs text-gray-600">{progress}%</span>
         </div>
 
-        {/* Блок с аватаром консультанта (не отображается на финальном шаге) */}
+        {/* Шапка с аватаркой, зелёным кружком и подсказкой */}
         {current.type !== 'final' && (
-          <div className="flex items-center mb-6">
-            <div className="w-16 h-16 rounded-full overflow-hidden mr-4">
-              <Image src="/avatar.png" alt="Avatar" width={64} height={64} />
+          <div className="flex flex-col md:flex-row items-start mb-6">
+            <div className="relative mr-0 md:mr-4 mb-2 md:mb-0">
+              <div className="w-16 h-16 rounded-full overflow-hidden">
+                <Image src="/avatar.png" alt="Avatar" width={64} height={64} />
+              </div>
+              {/* Зеленый кружок (индикатор онлайн) */}
+              <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>
             </div>
             <div>
               <p className="font-semibold text-gray-800 text-lg">Екатерина</p>
               <p className="text-sm text-gray-500">Посетила 45 стран</p>
+              {current.hint && (
+                <p className="text-sm text-blue-600 mt-1">{current.hint}</p>
+              )}
             </div>
           </div>
         )}
 
-        {/* Заголовок/вопрос */}
+        {/* Заголовок вопроса (если не финальный шаг) */}
         {current.type !== 'final' && (
-          <h2 className="text-2xl font-bold text-gray-700 mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-700 mb-6">
             {current.question}
           </h2>
         )}
 
-        {/* Шаг: выбор даты */}
+        {/* Шаг: inline-календарь */}
         {current.type === 'date' && (
-          <div>
-            <input
-              type="date"
-              className="w-full border border-gray-300 rounded-md px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.travelDate}
-              onChange={(e) => handleChange('travelDate', e.target.value)}
+          <div className="flex justify-center">
+            <DatePicker
+              inline
+              selected={formData.travelDate}
+              onChange={handleDateSelect}
+              minDate={new Date()}
             />
-            <div className="flex justify-end">
-              <button
-                className="bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600 transition"
-                onClick={goNext}
-              >
-                Далее
-              </button>
-            </div>
           </div>
         )}
 
@@ -197,7 +198,6 @@ export default function MyStyledQuiz() {
                 <span className="text-lg">{option}</span>
               </label>
             ))}
-            {/* Если выбрано "Другое…" показываем текстовое поле */}
             {formData[current.key] === 'other' && (
               <input
                 type="text"
@@ -208,11 +208,9 @@ export default function MyStyledQuiz() {
               />
             )}
             <div className="flex justify-end">
-              <button
-                className="bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600 transition"
-                onClick={goNext}
-              >
+              <button className="button-flare" onClick={goNext}>
                 Далее
+                <span className="flare"></span>
               </button>
             </div>
           </div>
@@ -260,11 +258,9 @@ export default function MyStyledQuiz() {
               </label>
             </div>
             <div className="flex justify-end">
-              <button
-                className="w-full bg-blue-500 text-white py-3 rounded-md font-semibold hover:bg-blue-600 transition"
-                onClick={handleSubmit}
-              >
+              <button className="button-flare" onClick={handleSubmit}>
                 Получить результаты
+                <span className="flare"></span>
               </button>
             </div>
           </div>
@@ -273,23 +269,28 @@ export default function MyStyledQuiz() {
         {/* Финальный шаг */}
         {current.type === 'final' && (
           <div className="text-center">
-            <h2 className="text-3xl font-bold mb-4 text-gray-800">Спасибо! 👏</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-800">
+              Спасибо! 👏
+            </h2>
             <p className="mb-6 text-gray-600 text-lg">
               Мы отправим вам результаты в течение 15 минут.
             </p>
             <div className="flex flex-col items-center space-y-4 mb-6">
               <button
-                className="bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600"
-                onClick={() => alert('Перейдите на сайт или соцсети')}
+                className="button-flare"
+                onClick={() =>
+                  (window.location.href = 'https://travel.tomsk.ru/')
+                }
               >
-                Завершить
+                Посетите наш сайт
+                <span className="flare"></span>
               </button>
               <p className="text-gray-500 text-sm">
-                Или посетите наш сайт / соцсети:
+                Или посетите наши соцсети:
               </p>
               <div className="flex space-x-4">
                 <a
-                  href="https://vk.com"
+                  href="https://vk.com/pegas_tomsk"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-gray-200 rounded px-4 py-2 hover:bg-gray-300 text-gray-700"
@@ -297,21 +298,29 @@ export default function MyStyledQuiz() {
                   VK
                 </a>
                 <a
-                  href="https://t.me"
+                  href="https://t.me/pegas_tomsk"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-gray-200 rounded px-4 py-2 hover:bg-gray-300 text-gray-700"
                 >
                   Telegram
                 </a>
+                <a
+                  href="https://ok.ru/group/70000007329147"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gray-200 rounded px-4 py-2 hover:bg-gray-300 text-gray-700"
+                >
+                  OK
+                </a>
               </div>
             </div>
           </div>
         )}
 
-        {/* Кнопка "Назад" */}
+        {/* Кнопка "Назад" (не показывается на финальном шаге) */}
         {currentStep > 0 && current.type !== 'final' && (
-          <div className="mt-6">
+          <div className="mt-4">
             <button className="text-blue-500 hover:underline" onClick={goBack}>
               Назад
             </button>
